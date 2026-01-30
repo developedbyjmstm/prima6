@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Match Parser</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0A2625 0%, #103F3E 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #9A7701;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #B5C3C3;
+            margin-bottom: 20px;
+        }
+        
+        .output-section {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #9A7701;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #9A7701;
+        }
+        
+        .results {
+            background: rgba(10, 38, 37, 0.7);
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .match {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #9A7701;
+        }
+        
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .league {
+            font-weight: bold;
+            color: #B5C3C3;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .country-flag {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .status.live {
+            background: #f40c27;
+        }
+        
+        .status.finished {
+            background: #34c759;
+        }
+        
+        .status.upcoming {
+            background: #9A7701;
+        }
+        
+        .teams {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .team {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .team.home {
+            justify-content: flex-start;
+        }
+        
+        .team.away {
+            justify-content: flex-end;
+            flex-direction: row-reverse;
+            text-align: right;
+        }
+        
+        .team-flag {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .score {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #9A7701;
+            margin: 0 15px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .prediction {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tip {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .tip.win {
+            background: #34c759;
+            color: white;
+        }
+        
+        .tip.loss {
+            background: #f40c27;
+            color: white;
+        }
+        
+        .tip.ongoing {
+            background: #9A7701;
+            color: white;
+        }
+        
+        .odds {
+            color: #B5C3C3;
+            font-weight: bold;
+        }
+        
+        .json-output {
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #B5C3C3;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #B5C3C3;
+            font-style: italic;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="output-section">
+            <h2>PARSED RESULTS & JSON</h2>
+            <div class="results" id="results">
+                <p class="loading">Parsing matches...</p>
+            </div>
+            <div class="json-output" id="jsonOutput">{}</div>
+        </div>
+    </div>
+
+    <script>
+        // Variable that will contain the HTML to parse
+        var htmlContentVariable = '';
+        
+        // Function to set HTML content from Android
+        function setHtmlContent(html) {
+            htmlContentVariable = html;
+            // Automatically parse the HTML when it's set
+            parseAndDisplayResults();
+        }
+        
+        // Function to parse HTML and display results
+        function parseAndDisplayResults() {
+            if (!htmlContentVariable) {
+                document.getElementById('results').innerHTML = '<p class="no-results">No HTML content provided</p>';
+                return;
+            }
+            
+            const results = parseMatches(htmlContentVariable);
+            displayResults(results);
+        }
+        
+        function parseMatches(html) {
+    if (!html) return [];
+
+    try {
+        const results = [];
+
+        // 📅 DATA
+        let date = "";
+        const dateMatch = html.match(/<h1 id="dn-title">\s*([^<]+)\s*<\/h1>/i);
+        if (dateMatch) {
+            const onlyDate = dateMatch[1].match(
+                /(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}/
+            );
+            if (onlyDate) date = onlyDate[0];
+        }
+
+        // ⚽ JOGOS
+        const gameRegex = /<a[^>]*id="g_\d+"[^>]*class="game"[^>]*>([\s\S]*?)<\/a>/gi;
+        let gameMatch;
+
+        while ((gameMatch = gameRegex.exec(html)) !== null) {
+            const gameHtml = gameMatch[0];
+
+            let obj = {
+                league: "",
+                leagueflag: "https://primatips.com/images/tournament/default.png",
+                team1: "",
+                team2: "",
+                team1flag: "",
+                team2flag: "",
+                date: date,
+                time: "",
+                scoreteam1: "",
+                scoreteam2: "",
+                tip: "",
+                odd: "",
+                result: "pending",
+                status: "UPCOMING"
+            };
+
+            // ⏰ HORA
+            const timeMatch = gameHtml.match(/<span class="tm">([^<]+)<\/span>/i);
+            if (timeMatch) obj.time = timeMatch[1].trim();
+
+            // 🏆 LIGA + BANDEIRA
+            const leagueMatch = gameHtml.match(
+                /<span class="fl">[\s\S]*?<img[^>]*src="([^"]*)"[^>]*title="([^"]*)"[^>]*>/i
+            );
+            if (leagueMatch) {
+                let flag = leagueMatch[1];
+                const title = leagueMatch[2];
+
+                if (!flag.includes("default.png")) {
+                    if (flag.startsWith("/")) flag = "https://primatips.com" + flag;
+                    obj.leagueflag = flag;
+                }
+
+                if (title.includes("-")) {
+                    obj.league = title.split("-", 2)[1].trim();
+                } else {
+                    obj.league = title.trim();
+                }
+            }
+
+            // 👥 TIMES
+            const teamsMatch = gameHtml.match(
+                /<span class="nms">[\s\S]*?<span class="nm">([^<]+)<\/span>[\s\S]*?<span class="sp">-<\/span>[\s\S]*?<span class="nm">([^<]+)<\/span>/i
+            );
+            if (teamsMatch) {
+                obj.team1 = teamsMatch[1].trim();
+                obj.team2 = teamsMatch[2].trim();
+            }
+
+            // 🔴 AO VIVO
+            if (gameHtml.includes('class="res lv"')) {
+                const liveScore = gameHtml.match(
+                    /<span class="res lv">[\s\S]*?<span class="l">([^<]*)<\/span>[\s\S]*?<span class="l la">([^<]*)<\/span>/i
+                );
+                if (liveScore) {
+                    obj.scoreteam1 = liveScore[1].trim();
+                    obj.scoreteam2 = liveScore[2].trim();
+                    obj.status = "LIVE";
+                    obj.result = "live";
+                }
+            }
+
+            // ✅ FINALIZADO
+            const finalScore = gameHtml.match(
+                /<span class="res[^"]*rsl[^"]*">[\s\S]*?<span class="r">([^<]*)<\/span>[\s\S]*?<span class="r">([^<]*)<\/span>/i
+            );
+            if (finalScore) {
+                obj.scoreteam1 = finalScore[1].trim();
+                obj.scoreteam2 = finalScore[2].trim();
+                obj.status = "FINISHED";
+            }
+
+            // 🎯 TIP + ODD (Double Chance: 1X/X2)
+            let tipOddMatch = gameHtml.match(
+                /<span class="to2\s+([^"]*)">[\s\S]*?<span class="tip2">([^<]+)<\/span>[\s\S]*?<span class="odd2">([^<]+)<\/span>/i
+            );
+
+            if (!tipOddMatch) {
+                // Se não tem classe de resultado, tenta sem classe
+                tipOddMatch = gameHtml.match(
+                    /<span class="to2">[\s\S]*?<span class="tip2">([^<]+)<\/span>[\s\S]*?<span class="odd2">([^<]+)<\/span>/i
+                );
+                if (tipOddMatch) {
+                    let tip = tipOddMatch[1].trim();
+                    if (tip === "1X") tip = "1X (Home Win or Draw)";
+                    else if (tip === "X2") tip = "X2 (Draw or Away Win)";
+
+                    obj.tip = tip;
+                    obj.odd = tipOddMatch[2].trim();
+                }
+            } else {
+                const resultClass = tipOddMatch[1].trim();
+                let tip = tipOddMatch[2].trim();
+                if (tip === "1X") tip = "1X (Home Win or Draw)";
+                else if (tip === "X2") tip = "X2 (Draw or Away Win)";
+
+                obj.tip = tip;
+                obj.odd = tipOddMatch[3].trim();
+
+                if (resultClass.includes("wn")) obj.result = "win";
+                else if (resultClass.includes("ls")) obj.result = "loss";
+                else if (resultClass.includes("postp")) obj.result = "pending";
+            }
+
+            // Se ainda não determinou resultado, verificar se ao vivo
+            if (obj.result === "pending" && gameHtml.includes('class="res lv"')) {
+                obj.result = "live";
+            }
+
+            // ✔ VALIDAR E ADICIONAR
+            if (obj.team1 && obj.team2) results.push(obj);
+        }
+
+        return results;
+
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+        
+        
+        
+        function displayResults(matches) {
+            const resultsContainer = document.getElementById('results');
+            const jsonOutput = document.getElementById('jsonOutput');
+            
+            if (matches.length === 0) {
+                resultsContainer.innerHTML = '<p class="no-results">No matches found or parsing error occurred</p>';
+                jsonOutput.textContent = '[]';
+                return;
+            }
+            
+            // Display formatted results
+            resultsContainer.innerHTML = '';
+            matches.forEach(match => {
+                const matchEl = document.createElement('div');
+                matchEl.className = 'match';
+                
+                // Determine status class
+                let statusClass = 'upcoming';
+                if (match.status === 'FINISHED') statusClass = 'finished';
+                if (match.status === 'LIVE') statusClass = 'live';
+                
+                matchEl.innerHTML = `
+                    <div class="match-header">
+                        <span class="league">
+                            ${match.countryFlag ? `<img class="country-flag" src="${match.countryFlag}" alt="Country flag">` : ''}
+                            ${match.league}
+                        </span>
+                        <span class="status ${statusClass}">${match.status}</span>
+                    </div>
+                    <div class="teams">
+                        <div class="team home">
+                            <img class="team-flag" src="${match.team1flag}" alt="${match.team1}" onerror="this.style.display='none'">
+                            <span>${match.team1}</span>
+                        </div>
+                        <div class="score">${match.score1 || '-'} : ${match.score2 || '-'}</div>
+                        <div class="team away">
+                            <img class="team-flag" src="${match.team2flag}" alt="${match.team2}" onerror="this.style.display='none'">
+                            <span>${match.team2}</span>
+                        </div>
+                    </div>
+                    <div class="prediction">
+                        <span class="tip ${match.tipClass || ''}">${match.tip || ''}</span>
+                        <span class="odds">Odds: ${match.odds || 'N/A'}</span>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(matchEl);
+            });
+            
+            // Display JSON output
+            jsonOutput.textContent = JSON.stringify(matches, null, 2);
+        }
+        
+
+    </script>
+</body>
+</html>
